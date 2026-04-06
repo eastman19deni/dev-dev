@@ -26,7 +26,8 @@ export interface AlertSettings {
   backgroundColor: string;
   textColor: string;
   font: string;
-  duration: number;
+  duraction: number; // duraction (сохранено для совместимости)
+  duration?: number; // правильное написание
 }
 
 export interface PassiveIncomeSettings {
@@ -47,13 +48,13 @@ export interface Donation {
   status: 'success' | 'rejected' | 'pending';
 }
 
-export interface StreamSession {
+export interface StreamerSession {
   id: string;
   streamerId: string;
   startTime: Date;
   endTime?: Date;
   totalEarned: number;
-  donationCount: number;
+  donationCount?: number;
   topDonor?: {
     name: string;
     amount: number;
@@ -62,9 +63,12 @@ export interface StreamSession {
 
 export interface Transaction {
   id: string;
-  type: 'deposit' | 'donation_sent' | 'donation_received' | 'passive_income';
+  type: 'deposit' | 'donation_sent' | 'donation_received' | 'passive_income' | 'withdrawal';
   amount: number;
   timestamp: Date;
-  description: string;
+  description?: string;
   status: 'completed' | 'pending' | 'failed';
+  userId?: string;
+  createdAt?: Date;
+  paymentMethod?: string;
 }

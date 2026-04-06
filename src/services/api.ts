@@ -11,22 +11,8 @@ import {
 } from '../types'
 
 /**
- * Auth API
- *@see https://dev.api.tipbot.qu1nqqy.ru/auth/telegram
-*/
-
-export const authApi = {
-  async telegram(): Promise<{ access_token: string }> {
-    return apiRequest<{ access_token: string }>({
-      method: 'POST',
-      url: '/auth/telegram',
-    })
-  },
-}
-
-/**
  * User API
- *@see https://dev.api.tipbot.qu1nqqy.ru/users
+*@see https://dev.api.tipbot.qu1nqqy.ru/user
 */
 
 export const userApi = {
@@ -107,8 +93,8 @@ export const donationApi = {
 }
 
 /**
- * Health API
- * @see https://dev.api.tipbot.qu1nqqy.ru/health
+ * Streamer API
+ * @see https://dev.api.tipbot.qu1nqqy.ru/streamers
  */
 
 export const healthApi = {

@@ -1,4 +1,4 @@
-import { Streamer, User, Donation, StreamSession, Transaction } from './types';
+import type { Streamer, User, Donation, StreamSession, Transaction } from './types';
 import streamer1Avatar from '../images/streamer1.jpeg';
 import streamer2Avatar from '../images/streamer2.jpg';
 import streamer3Avatar from '../images/streamer3.jpg';

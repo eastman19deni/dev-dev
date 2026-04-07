@@ -54,7 +54,7 @@ export function AuthPage() {
                 <span className="font-medium">Локальный режим (mock token)</span>
               </div>
               <p className="text-sm text-gray-500">
-                Используется тестовый токен для локальной разработки
+                Используется токен для локальной разработки
               </p>
               {error && (
                 <p className="text-sm text-red-600 bg-red-50 rounded-lg p-3 mt-3">

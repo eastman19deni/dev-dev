@@ -15,12 +15,26 @@ import {
  * @see auth
  */
 export const authApi = {
-  async telegram(initData: string): Promise<{ token: string; user: User }> {
-    return apiRequest<{ token: string; user: User }>({
+  /**
+   * Авторизация через Telegram
+   * @param authData - initData от Telegram или mock token для локальной разработки
+   * @returns JWT токен и данные пользователя
+   */
+  async login(authData: string): Promise<{ token: string; user: User }> {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'https://dev.api.tipbot.qu1nqqy.ru'}/auth/telegram`, {
       method: 'POST',
-      url: '/auth/telegram',
-      data: { init_data: initData },
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ init_data: authData }),
     })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Auth failed' }))
+      throw new Error(error.message || 'Authorization failed')
+    }
+
+    return response.json()
   },
 }
 

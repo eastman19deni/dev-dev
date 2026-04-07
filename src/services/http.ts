@@ -1,4 +1,4 @@
-// src/services/http.ts
+
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosError } from 'axios'
 
 

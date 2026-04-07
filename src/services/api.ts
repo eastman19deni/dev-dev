@@ -12,28 +12,27 @@ import {
 
 /**
  * Auth API
- *@see https://dev.api.tipbot.qu1nqqy.ru/auth/telegram
-*/
-
+ * @see auth
+ */
 export const authApi = {
-  async telegram(): Promise<{ access_token: string }> {
-    return apiRequest<{ access_token: string }>({
+  async telegram(initData: string): Promise<{ token: string; user: User }> {
+    return apiRequest<{ token: string; user: User }>({
       method: 'POST',
       url: '/auth/telegram',
+      data: { init_data: initData },
     })
   },
 }
 
 /**
  * User API
- *@see https://dev.api.tipbot.qu1nqqy.ru/users
-*/
-
+ * @see user
+ */
 export const userApi = {
   async getMe(): Promise<User> {
     return apiRequest<User>({
       method: 'GET',
-      url: '/users/me',
+      url: 'users/me',
     })
   },
 
@@ -48,21 +47,21 @@ export const userApi = {
 
 /**
  * Balance API
- * @see https://dev.api.tipbot.qu1nqqy.ru/balance
+ * @see balance
  */
 
 export const balanceApi = {
   async get(): Promise<{ balance: number }> {
     return apiRequest<{ balance: number }>({
       method: 'GET',
-      url: '/balance',
+      url: 'balance',
     })
   },
 
   async topup(amount: number): Promise<{ balance: number }> {
     return apiRequest<{ balance: number }>({
       method: 'POST',
-      url: '/balance/topup',
+      url: 'balance/topup',
       data: { amount },
     })
   },
@@ -70,7 +69,7 @@ export const balanceApi = {
 
 /**
  * Donation API
- * @see https://dev.api.tipbot.qu1nqqy.ru/donations
+ * @see donations
  */
 
 export const donationApi = {
@@ -79,7 +78,7 @@ export const donationApi = {
   ): Promise<Donation> {
     return apiRequest<Donation> ({
       method: 'POST',
-      url: '/donations',
+      url: 'donations',
       data: {
         ...donation,
         timestamp:new Date().toISOString(),
@@ -94,21 +93,21 @@ export const donationApi = {
   }> {
     return apiRequest({
       method: 'GET',
-      url: '/donations/session',
+      url: 'donations/session',
     })
   },
 
   async getHistory(): Promise<Donation[]> {
     return apiRequest<Donation[]>({
       method: 'GET',
-      url: '/donations/history',
+      url: 'donations/history',
     })
   },
 }
 
 /**
- * Health API
- * @see https://dev.api.tipbot.qu1nqqy.ru/health
+ * Streamer API
+ * @see streamers
  */
 
 export const healthApi = {
@@ -120,26 +119,38 @@ export const healthApi = {
   },
 }
 
+/**
+ * Metrics API
+ */
+export const metricsApi = {
+  async get(): Promise<Record<string, unknown>> {
+    return apiRequest<Record<string, unknown>>({
+      method: 'GET',
+      url: '/metrics',
+    })
+  },
+}
+
 // Legacy API exports for backward compatibility (to be removed after migration)
 export const streamerApi = {
     async getAll(): Promise<Streamer[]> {
         return apiRequest<Streamer[]>({
             method: 'GET',
-            url: '/streamers',
+            url: 'streamers',
         })
     },
 
     async getById(id:string): Promise<Streamer> {
         return apiRequest<Streamer> ({
             method: 'GET',
-            url: `/streamers/${id}`,
+            url: `streamers/${id}`,
         })
     },
 
     async search(query:string): Promise<Streamer[]> {
         return apiRequest<Streamer[]>({
             method: 'GET',
-            url: '/streamer/search',
+            url: 'streamer/search',
             params: {q: query},
         })
     },
@@ -150,7 +161,7 @@ export const streamerApi = {
     ) : Promise<Streamer> {
         return apiRequest<Streamer>({
             method: "PATCH",
-            url: `/streamers/${id}/settings`,
+            url: `streamers/${id}/settings`,
             data:settings,
         })
     },
@@ -160,14 +171,14 @@ export const sessionApi = {
     async start(streamerId: string): Promise<StreamerSession> {
       return apiRequest<StreamerSession>({
         method: 'POST',
-        url: `/streamers/${streamerId}/sessions`,
+        url: `streamers/${streamerId}/sessions`,
       })
     },
 
     async end(sessionId: string): Promise<StreamerSession> {
       return apiRequest<StreamerSession>({
         method: 'PATCH',
-        url: `/sessions/${sessionId}/end`,
+        url: `sessions/${sessionId}/end`,
       })
     },
 
@@ -189,7 +200,7 @@ export const sessionApi = {
     }> {
         return apiRequest({
             method: 'GET',
-            url: `/sessions/${sessionId}/status`,
+            url: `sessions/${sessionId}/status`,
         })
     },
 }
@@ -198,14 +209,14 @@ export const transactionApi ={
     async getHistory(userId: string): Promise<Transaction[]> {
         return apiRequest<Transaction[]>({
             method: 'GET',
-            url: `/users/${userId}/transactions`,
+            url: `users/${userId}/transactions`,
         })
     },
 
     async deposit(userId: string, amount:number, paymentMethod?: string): Promise<Transaction> {
         return apiRequest<Transaction>({
             method: 'POST',
-            url: `/users/${userId}/deposit`,
+            url: `users/${userId}/deposit`,
             data: {
                 amount,
                 payment_method: paymentMethod,
@@ -218,7 +229,7 @@ export const alertApi = {
     async getSettings(streamerId: string): Promise<AlertSettings> {
         return apiRequest<AlertSettings> ({
             method: 'GET',
-            url: `/streamers/${streamerId}/alerts`,
+            url: `streamers/${streamerId}/alerts`,
         })
     },
 
@@ -228,7 +239,7 @@ export const alertApi = {
     ): Promise<AlertSettings> {
         return apiRequest<AlertSettings> ({
             method: 'PATCH',
-            url: `/streamers/${streamerId}/alerts`,
+            url: `streamers/${streamerId}/alerts`,
             data: settings,
         })
     },
@@ -238,14 +249,14 @@ export const stopWordsApi = {
     async getAll(streamerId: string): Promise<string[]> {
         return apiRequest<string[]>({
             method: 'GET',
-            url: `/streamers/${streamerId}/stop-words`
+            url: `streamers/${streamerId}/stop-words`
         })
     },
 
     async add(streamerId: string, word:string): Promise<string[]> {
         return apiRequest<string[]>({
             method: 'POST',
-            url: `/streamers/${streamerId}/stop-words`,
+            url: `streamers/${streamerId}/stop-words`,
             data: {word},
         })
     },
@@ -253,7 +264,7 @@ export const stopWordsApi = {
     async remove(streamerId: string, word:string): Promise<void>{
         return apiRequest<void>({
             method: 'DELETE',
-            url: `/streamers/${streamerId}/stop-word/${encodeURIComponent(word)}`,
+            url: `streamers/${streamerId}/stop-word/${encodeURIComponent(word)}`,
         })
     },
 }
@@ -262,7 +273,7 @@ export const passiveIncomeAPI = {
     async getSettings(streamerId: string): Promise<PassiveIncomeSettings> {
         return apiRequest<PassiveIncomeSettings>({
             method: 'GET',
-            url: `/streamer/${streamerId}/passive-income`,
+            url: `streamer/${streamerId}/passive-income`,
         })
     },
 
@@ -272,7 +283,7 @@ export const passiveIncomeAPI = {
     ): Promise<PassiveIncomeSettings>{
         return apiRequest<PassiveIncomeSettings>({
             method: 'PATCH',
-            url: `/streamer/${streamerId}/passive-income`,
+            url: `streamer/${streamerId}/passive-income`,
             data: settings,
         })
     },

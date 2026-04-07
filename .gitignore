@@ -25,6 +25,7 @@ dist-ssr
 .claude/*
 .planning/*
 md-file
+.postman
 
 .env 
 .env.local

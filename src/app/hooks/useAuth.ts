@@ -43,7 +43,9 @@ export function useAuth() {
       // Токена нет - авторизуемся
       console.log('[Auth] No token, authenticating...')
 
-      const localMode = isLocalMode();
+      // Получаем initData напрямую из window.Telegram
+      const tgInitData = window.Telegram?.WebApp?.initData;
+      const localMode = !tgInitData || tgInitData === '';
 
       if (localMode) {
         // Локальный режим - используем mock token
@@ -58,34 +60,15 @@ export function useAuth() {
         });
       } else {
         // Mini App режим - используем Telegram initData
-        if (telegram.isReady) {
-          const tgInitData = window.Telegram?.WebApp?.initData;
-          if (!tgInitData) {
-            setState({
-              user: null,
-              isLoading: false,
-              isAuthenticated: false,
-              error: 'Не удалось получить данные Telegram',
-            });
-            return;
-          }
-          console.log('[Auth] Mini App mode: authenticating with initData')
-          const { token, user } = await authApi.login(tgInitData);
-          localStorage.setItem('auth_token', token);
-          setState({
-            user,
-            isLoading: false,
-            isAuthenticated: true,
-            error: null,
-          });
-        } else {
-          setState({
-            user: null,
-            isLoading: false,
-            isAuthenticated: false,
-            error: 'Приложение должно быть открыто в Telegram',
-          });
-        }
+        console.log('[Auth] Mini App mode: authenticating with initData')
+        const { token, user } = await authApi.login(tgInitData);
+        localStorage.setItem('auth_token', token);
+        setState({
+          user,
+          isLoading: false,
+          isAuthenticated: true,
+          error: null,
+        });
       }
     } catch (error: any) {
       console.error('Auth error:', error);
@@ -97,7 +80,7 @@ export function useAuth() {
         error: error?.message || 'Ошибка авторизации',
       });
     }
-  }, [telegram.isReady]);
+  }, []);
 
   const logout = useCallback(() => {
     localStorage.removeItem('auth_token');

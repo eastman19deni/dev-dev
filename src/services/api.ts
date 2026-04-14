@@ -1,14 +1,57 @@
-import {apiRequest} from './http'
-
 import {
-    type Transaction,
   type User,
   type Streamer,
   type Donation,
   type StreamerSession,
   type AlertSettings,
   type PassiveIncomeSettings,
-} from '../types'
+  type Transaction,
+  type BalanceResponse,
+  type TopupResponse,
+  type DonationBody,
+  type DonationCreateResponse,
+  type DonationHistoryResponse,
+  type SessionStats,
+  type StreamerListResponse,
+  type StreamerFilters,
+  type UserRoleBody,
+  type StreamStartBody,
+  type StreamStartResponse,
+  type StreamStopResponse,
+  type StreamStatusResponse,
+} from '../app/types'
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.tipbot.qu1nqqy.ru'
+
+// Вспомогательная функция для выполнения fetch запросов с авторизацией
+async function fetchWithAuth<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const token = localStorage.getItem('auth_token')
+  const url = `${API_BASE_URL}${endpoint}`
+
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  }
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers,
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Request failed' }))
+    throw new Error(error.message || `HTTP ${response.status}: ${response.statusText}`)
+  }
+
+  return response.json()
+}
 
 /**
  * Auth API
@@ -21,7 +64,7 @@ export const authApi = {
    * @returns JWT токен и данные пользователя
    */
   async login(authData: string): Promise<{ access_token: string; user: User }> {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'https://dev.api.tipbot.qu1nqqy.ru'}/auth/telegram`, {
+    const response = await fetch(`${API_BASE_URL}/auth/telegram`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -43,18 +86,24 @@ export const authApi = {
  * @see user
  */
 export const userApi = {
+
   async getMe(): Promise<User> {
-    return apiRequest<User>({
-      method: 'GET',
-      url: 'users/me',
+    return fetchWithAuth<User>('/users/me')
+  },
+
+ 
+  async setRole(role: 'streamer' | 'viewer'): Promise<User> {
+    return fetchWithAuth<User>('/users/me/role', {
+      method: 'PATCH',
+      body: JSON.stringify({ role }),
     })
   },
 
-  async setRole(role: 'streamer' | 'viewer'): Promise<User> {
-    return apiRequest<User>({
+
+  async updateProfile(data: { display_name?: string; description?: string }): Promise<User> {
+    return fetchWithAuth<User>('/users/me', {
       method: 'PATCH',
-      url: '/users/me/role',
-      data: { role },
+      body: JSON.stringify(data),
     })
   },
 }
@@ -63,20 +112,17 @@ export const userApi = {
  * Balance API
  * @see balance
  */
-
 export const balanceApi = {
-  async get(): Promise<{ balance: number }> {
-    return apiRequest<{ balance: number }>({
-      method: 'GET',
-      url: 'balance',
-    })
+
+  async get(): Promise<BalanceResponse> {
+    return fetchWithAuth<BalanceResponse>('/balance')
   },
 
-  async topup(amount: number): Promise<{ balance: number }> {
-    return apiRequest<{ balance: number }>({
+
+  async topup(amount: number): Promise<TopupResponse> {
+    return fetchWithAuth<TopupResponse>('/balance/topup', {
       method: 'POST',
-      url: 'balance/topup',
-      data: { amount },
+      body: JSON.stringify({ amount }),
     })
   },
 }
@@ -85,37 +131,27 @@ export const balanceApi = {
  * Donation API
  * @see donations
  */
-
 export const donationApi = {
-  async send(
-    donation: Omit<Donation,'id' | 'timestamp' | 'status'>
-  ): Promise<Donation> {
-    return apiRequest<Donation> ({
+
+  async send(donation: DonationBody): Promise<DonationCreateResponse> {
+    return fetchWithAuth<DonationCreateResponse>('/donations', {
       method: 'POST',
-      url: 'donations',
-      data: {
-        ...donation,
-        timestamp:new Date().toISOString(),
-      },
+      body: JSON.stringify(donation),
     })
   },
 
-  async getSessionStats(): Promise<{
-    totalEarned: number
-    donationCount: number
-    topDonor?: {name: string; amount: number}
-  }> {
-    return apiRequest({
-      method: 'GET',
-      url: 'donations/session',
-    })
+  async getSessionStats(): Promise<SessionStats> {
+    return fetchWithAuth<SessionStats>('/donations/session')
   },
 
-  async getHistory(): Promise<Donation[]> {
-    return apiRequest<Donation[]>({
-      method: 'GET',
-      url: 'donations/history',
-    })
+
+  async getHistory(limit?: number, offset?: number): Promise<DonationHistoryResponse> {
+    const params = new URLSearchParams()
+    if (limit) params.append('limit', limit.toString())
+    if (offset) params.append('offset', offset.toString())
+
+    const endpoint = `/donations/history${params.toString() ? `?${params.toString()}` : ''}`
+    return fetchWithAuth<DonationHistoryResponse>(endpoint)
   },
 }
 
@@ -123,182 +159,181 @@ export const donationApi = {
  * Streamer API
  * @see streamers
  */
+export const streamerApi = {
 
-export const healthApi = {
-  async check(): Promise<{ status: string }> {
-    return apiRequest<{ status: string }>({
-      method: 'GET',
-      url: '/health',
+  async getAll(filters?: StreamerFilters): Promise<StreamerListResponse> {
+    const params = new URLSearchParams()
+    if (filters?.limit) params.append('limit', filters.limit.toString())
+    if (filters?.offset) params.append('offset', filters.offset.toString())
+    if (filters?.search) params.append('search', filters.search)
+
+    const endpoint = `/streamers${params.toString() ? `?${params.toString()}` : ''}`
+    return fetchWithAuth<StreamerListResponse>(endpoint)
+  },
+
+
+  async getById(id: string): Promise<Streamer> {
+    return fetchWithAuth<Streamer>(`/streamers/${id}`)
+  },
+
+
+  async search(query: string): Promise<StreamerListResponse> {
+    return fetchWithAuth<StreamerListResponse>(`/streamers/search?q=${encodeURIComponent(query)}`)
+  },
+
+
+  async updateSettings(
+    id: string,
+    settings: Partial<Pick<Streamer, 'alertSettings' | 'stopWords' | 'passiveIncome'>>
+  ): Promise<Streamer> {
+    return fetchWithAuth<Streamer>(`/streamers/${id}/settings`, {
+      method: 'PATCH',
+      body: JSON.stringify(settings),
     })
   },
 }
 
 /**
- * Metrics API
+ * Session API
+ * @see sessions
  */
-export const metricsApi = {
-  async get(): Promise<Record<string, unknown>> {
-    return apiRequest<Record<string, unknown>>({
-      method: 'GET',
-      url: '/metrics',
+export const sessionApi = {
+
+  async start(streamerId: string, options?: StreamStartBody): Promise<StreamStartResponse> {
+    return fetchWithAuth<StreamStartResponse>(`/streamers/${streamerId}/sessions`, {
+      method: 'POST',
+      body: JSON.stringify(options || {}),
+    })
+  },
+
+
+  async end(sessionId: string): Promise<StreamStopResponse> {
+    return fetchWithAuth<StreamStopResponse>(`/sessions/${sessionId}/end`, {
+      method: 'PATCH',
+    })
+  },
+
+  async getCurrent(streamerId: string): Promise<StreamerSession | null> {
+    try {
+      return await fetchWithAuth<StreamerSession>(`/streamers/${streamerId}/sessions/current`)
+    } catch (error: any) {
+      if (error.message?.includes('404')) return null
+      throw error
+    }
+  },
+
+
+  async getStatus(sessionId: string): Promise<SessionStats> {
+    return fetchWithAuth<SessionStats>(`/sessions/${sessionId}/status`)
+  },
+}
+
+/**
+ * Transaction API
+ * @see transactions
+ */
+export const transactionApi = {
+
+  async getHistory(userId: string): Promise<Transaction[]> {
+    return fetchWithAuth<Transaction[]>(`/users/${userId}/transactions`)
+  },
+
+
+  async deposit(userId: string, amount: number, paymentMethod?: string): Promise<Transaction> {
+    return fetchWithAuth<Transaction>(`/users/${userId}/deposit`, {
+      method: 'POST',
+      body: JSON.stringify({
+        amount,
+        payment_method: paymentMethod,
+      }),
     })
   },
 }
 
-// Legacy API exports for backward compatibility (to be removed after migration)
-export const streamerApi = {
-    async getAll(): Promise<Streamer[]> {
-        return apiRequest<Streamer[]>({
-            method: 'GET',
-            url: 'streamers',
-        })
-    },
-
-    async getById(id:string): Promise<Streamer> {
-        return apiRequest<Streamer> ({
-            method: 'GET',
-            url: `streamers/${id}`,
-        })
-    },
-
-    async search(query:string): Promise<Streamer[]> {
-        return apiRequest<Streamer[]>({
-            method: 'GET',
-            url: 'streamer/search',
-            params: {q: query},
-        })
-    },
-
-    async updateSettings(
-        id: string,
-        settings: Partial<Pick<Streamer, 'alertSettings' | 'stopWords' | 'passiveIncome'>>
-    ) : Promise<Streamer> {
-        return apiRequest<Streamer>({
-            method: "PATCH",
-            url: `streamers/${id}/settings`,
-            data:settings,
-        })
-    },
-}
-
-export const sessionApi = {
-    async start(streamerId: string): Promise<StreamerSession> {
-      return apiRequest<StreamerSession>({
-        method: 'POST',
-        url: `streamers/${streamerId}/sessions`,
-      })
-    },
-
-    async end(sessionId: string): Promise<StreamerSession> {
-      return apiRequest<StreamerSession>({
-        method: 'PATCH',
-        url: `sessions/${sessionId}/end`,
-      })
-    },
-
-    async getCurrent(streamerId: string): Promise<StreamerSession | null> {
-        return apiRequest<StreamerSession | null>({
-            method: 'GET',
-            url: `/streamers/${streamerId}/sessions/current`,
-            validateStatus: (status) => status < 500,
-        }).catch((error) => {
-            if (error?.response?.status === 404) return null
-            throw error
-        })
-    },
-
-    async getStatus(sessionId: string): Promise<{
-        totalEarned: number
-        donationCount: number
-        topDonor?: {name: string; amount: number}
-    }> {
-        return apiRequest({
-            method: 'GET',
-            url: `sessions/${sessionId}/status`,
-        })
-    },
-}
-
-export const transactionApi ={
-    async getHistory(userId: string): Promise<Transaction[]> {
-        return apiRequest<Transaction[]>({
-            method: 'GET',
-            url: `users/${userId}/transactions`,
-        })
-    },
-
-    async deposit(userId: string, amount:number, paymentMethod?: string): Promise<Transaction> {
-        return apiRequest<Transaction>({
-            method: 'POST',
-            url: `users/${userId}/deposit`,
-            data: {
-                amount,
-                payment_method: paymentMethod,
-            },
-        })
-    },
-}
-
+/**
+ * Alert API
+ * @see alerts
+ */
 export const alertApi = {
-    async getSettings(streamerId: string): Promise<AlertSettings> {
-        return apiRequest<AlertSettings> ({
-            method: 'GET',
-            url: `streamers/${streamerId}/alerts`,
-        })
-    },
 
-    async updateSettings(
-        streamerId: string,
-        settings: Partial<AlertSettings>
-    ): Promise<AlertSettings> {
-        return apiRequest<AlertSettings> ({
-            method: 'PATCH',
-            url: `streamers/${streamerId}/alerts`,
-            data: settings,
-        })
-    },
+  async getSettings(streamerId: string): Promise<AlertSettings> {
+    return fetchWithAuth<AlertSettings>(`/streamers/${streamerId}/alerts`)
+  },
+
+
+  async updateSettings(streamerId: string, settings: Partial<AlertSettings>): Promise<AlertSettings> {
+    return fetchWithAuth<AlertSettings>(`/streamers/${streamerId}/alerts`, {
+      method: 'PATCH',
+      body: JSON.stringify(settings),
+    })
+  },
 }
 
+/**
+ * Stop Words API
+ * @see stop-words
+ */
 export const stopWordsApi = {
-    async getAll(streamerId: string): Promise<string[]> {
-        return apiRequest<string[]>({
-            method: 'GET',
-            url: `streamers/${streamerId}/stop-words`
-        })
-    },
 
-    async add(streamerId: string, word:string): Promise<string[]> {
-        return apiRequest<string[]>({
-            method: 'POST',
-            url: `streamers/${streamerId}/stop-words`,
-            data: {word},
-        })
-    },
+  async getAll(streamerId: string): Promise<string[]> {
+    return fetchWithAuth<string[]>(`/streamers/${streamerId}/stop-words`)
+  },
 
-    async remove(streamerId: string, word:string): Promise<void>{
-        return apiRequest<void>({
-            method: 'DELETE',
-            url: `streamers/${streamerId}/stop-word/${encodeURIComponent(word)}`,
-        })
-    },
+  async add(streamerId: string, word: string): Promise<string[]> {
+    return fetchWithAuth<string[]>(`/streamers/${streamerId}/stop-words`, {
+      method: 'POST',
+      body: JSON.stringify({ word }),
+    })
+  },
+
+
+  async remove(streamerId: string, word: string): Promise<void> {
+    return fetchWithAuth<void>(`/streamers/${streamerId}/stop-word/${encodeURIComponent(word)}`, {
+      method: 'DELETE',
+    })
+  },
 }
 
-export const passiveIncomeAPI = {
-    async getSettings(streamerId: string): Promise<PassiveIncomeSettings> {
-        return apiRequest<PassiveIncomeSettings>({
-            method: 'GET',
-            url: `streamer/${streamerId}/passive-income`,
-        })
-    },
+/**
+ * Passive Income API
+ * @see passive-income
+ */
+export const passiveIncomeApi = {
 
-    async updateSetting(
-        streamerId: string,
-        settings: Partial<PassiveIncomeSettings>
-    ): Promise<PassiveIncomeSettings>{
-        return apiRequest<PassiveIncomeSettings>({
-            method: 'PATCH',
-            url: `streamer/${streamerId}/passive-income`,
-            data: settings,
-        })
-    },
+  async getSettings(streamerId: string): Promise<PassiveIncomeSettings> {
+    return fetchWithAuth<PassiveIncomeSettings>(`/streamers/${streamerId}/passive-income`)
+  },
+
+
+  async updateSettings(
+    streamerId: string,
+    settings: Partial<PassiveIncomeSettings>
+  ): Promise<PassiveIncomeSettings> {
+    return fetchWithAuth<PassiveIncomeSettings>(`/streamers/${streamerId}/passive-income`, {
+      method: 'PATCH',
+      body: JSON.stringify(settings),
+    })
+  },
+}
+
+/**
+ * Health API
+ * @see health
+ */
+export const healthApi = {
+
+  async check(): Promise<{ status: string }> {
+    return fetchWithAuth<{ status: string }>('/health')
+  },
+}
+
+/**
+ * Metrics API
+ * @see metrics
+ */
+export const metricsApi = {
+
+  async get(): Promise<Record<string, unknown>> {
+    return fetchWithAuth<Record<string, unknown>>('/metrics')
+  },
 }

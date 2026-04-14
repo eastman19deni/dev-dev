@@ -26,6 +26,7 @@ dist-ssr
 .planning/*
 md-file
 .postman
+src/config
 backend
 .env 
 .env.local

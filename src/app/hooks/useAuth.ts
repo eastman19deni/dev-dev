@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTelegram } from './useTelegram';
 import { authApi, userApi } from '../../services/api';
 import { isLocalMode, MOCK_TOKEN } from '../../services/http';
-import type { User } from '../../types';
+import type { User } from '../types';
 
 interface AuthState {
   user: User | null;
@@ -50,8 +50,8 @@ export function useAuth() {
       if (localMode) {
         // Локальный режим - используем mock token
         console.log('[Auth] Local mode: authenticating with mock token')
-        const { token, user } = await authApi.login(MOCK_TOKEN);
-        localStorage.setItem('auth_token', token);
+        const { access_token, user } = await authApi.login(MOCK_TOKEN);
+        localStorage.setItem('auth_token', access_token);
         setState({
           user,
           isLoading: false,
@@ -61,8 +61,8 @@ export function useAuth() {
       } else {
         // Mini App режим - используем Telegram initData
         console.log('[Auth] Mini App mode: authenticating with initData')
-        const { token, user } = await authApi.login(tgInitData);
-        localStorage.setItem('auth_token', token);
+        const { access_token, user } = await authApi.login(tgInitData);
+        localStorage.setItem('auth_token', access_token);
         setState({
           user,
           isLoading: false,

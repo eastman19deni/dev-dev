@@ -20,8 +20,8 @@ import {
   type StreamStopResponse,
   type StreamStatusResponse,
 } from '../app/types'
+import { API_BASE } from '../config/config-api'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.tipbot.qu1nqqy.ru'
 
 // Вспомогательная функция для выполнения fetch запросов с авторизацией
 async function fetchWithAuth<T>(
@@ -29,7 +29,7 @@ async function fetchWithAuth<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const token = localStorage.getItem('auth_token')
-  const url = `${API_BASE_URL}${endpoint}`
+  const url = `${API_BASE}${endpoint}`
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
@@ -64,7 +64,7 @@ export const authApi = {
    * @returns JWT токен и данные пользователя
    */
   async login(authData: string): Promise<{ access_token: string; user: User }> {
-    const response = await fetch(`${API_BASE_URL}/auth/telegram`, {
+    const response = await fetch(`${API_BASE}/auth/telegram`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

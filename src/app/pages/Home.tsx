@@ -1,29 +1,83 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Search, Plus, TrendingUp } from 'lucide-react';
-import { mockUser, mockStreamers } from '../mock-data';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Progress } from '../components/ui/progress';
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { toast } from 'sonner';
+import { streamerApi, balanceApi, userApi } from '../../services/api';
+import type { StreamerItem, User } from '../types';
 
 export function Home() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [depositDialogOpen, setDepositDialogOpen] = useState(false);
   const [depositAmount, setDepositAmount] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [streamers, setStreamers] = useState<StreamerItem[]>([]);
+  const [balance, setBalance] = useState(0);
 
-  const filteredStreamers = mockStreamers.filter(streamer =>
-    streamer.username.toLowerCase().includes(searchQuery.toLowerCase())
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      const [userData, streamersData, balanceData] = await Promise.all([
+        userApi.getMe(),
+        streamerApi.getAll({ limit: 50 }),
+        balanceApi.get(),
+      ]);
+      
+      setUser(userData);
+      setStreamers(streamersData.items);
+      setBalance(balanceData.balance);
+    } catch (error) {
+      console.error('Failed to load data:', error);
+      toast.error('Не удалось загрузить данные');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const filteredStreamers = streamers.filter(streamer =>
+    (streamer.display_name || streamer.username || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleDeposit = (amount: number) => {
-    // Mock deposit logic
-    toast.success(`Баланс пополнен на ${amount} ₽!`);
-    setDepositDialogOpen(false);
+  const handleDeposit = async (amount: number) => {
+    try {
+      const response = await balanceApi.topup(amount);
+      setBalance(response.new_balance);
+      toast.success(`Баланс пополнен на ${amount} coins!`);
+      setDepositDialogOpen(false);
+      setDepositAmount('');
+    } catch (error: any) {
+      console.error('Failed to deposit:', error);
+      toast.error(error?.message || 'Ошибка при пополнении баланса');
+    }
   };
+
+  const handleCustomDeposit = () => {
+    const amount = Number(depositAmount);
+    if (amount > 0) {
+      handleDeposit(amount);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Загрузка...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
@@ -32,7 +86,7 @@ export function Home() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <p className="text-sm opacity-90">Добро пожаловать,</p>
-            <h1 className="text-2xl font-bold">{mockUser.username}</h1>
+            <h1 className="text-2xl font-bold">{user?.display_name || user?.username || 'Гость'}</h1>
           </div>
           <Button
             variant="secondary"
@@ -46,7 +100,7 @@ export function Home() {
         
         <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
           <p className="text-sm opacity-90 mb-1">Ваш баланс</p>
-          <p className="text-4xl font-bold">{mockUser.balance} ₽</p>
+          <p className="text-4xl font-bold">{balance} coins</p>
         </div>
       </div>
 
@@ -83,11 +137,11 @@ export function Home() {
                 <div className="flex items-start gap-4">
                   <div className="relative">
                     <img
-                      src={streamer.avatar}
-                      alt={streamer.username}
+                      src={streamer.avatar_url || '/default-avatar.png'}
+                      alt={streamer.display_name || streamer.username || 'Streamer'}
                       className="w-16 h-16 rounded-full"
                     />
-                    {streamer.isLive && (
+                    {streamer.is_live && (
                       <Badge className="absolute -bottom-1 -right-1 bg-red-500 text-white px-2 py-0 text-xs">
                         LIVE
                       </Badge>
@@ -95,19 +149,21 @@ export function Home() {
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-lg truncate">{streamer.username}</h3>
-                    <p className="text-sm text-gray-600 truncate">{streamer.description}</p>
+                    <h3 className="font-semibold text-lg truncate">
+                      {streamer.display_name || streamer.username || 'Аноним'}
+                    </h3>
+                    <p className="text-sm text-gray-600 truncate">Стример</p>
                     
                     {streamer.goal && (
                       <div className="mt-3">
                         <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
-                          <span>{streamer.goal.description}</span>
+                          <span>{streamer.goal.title || 'Цель'}</span>
                           <span className="font-medium">
-                            {streamer.goal.current}/{streamer.goal.target}
+                            {streamer.goal.current_amount}/{streamer.goal.target_amount}
                           </span>
                         </div>
                         <Progress 
-                          value={(streamer.goal.current / streamer.goal.target) * 100} 
+                          value={(streamer.goal.current_amount / streamer.goal.target_amount) * 100} 
                           className="h-2"
                         />
                       </div>
@@ -149,7 +205,7 @@ export function Home() {
               >
                 <div className="text-center">
                   <div className="text-lg font-bold">+100</div>
-                  <div className="text-xs text-gray-500">₽</div>
+                  <div className="text-xs text-gray-500">coins</div>
                 </div>
               </Button>
               <Button
@@ -159,7 +215,7 @@ export function Home() {
               >
                 <div className="text-center">
                   <div className="text-lg font-bold">+500</div>
-                  <div className="text-xs text-gray-500">₽</div>
+                  <div className="text-xs text-gray-500">coins</div>
                 </div>
               </Button>
               <Button
@@ -169,7 +225,7 @@ export function Home() {
               >
                 <div className="text-center">
                   <div className="text-lg font-bold">+1000</div>
-                  <div className="text-xs text-gray-500">₽</div>
+                  <div className="text-xs text-gray-500">coins</div>
                 </div>
               </Button>
             </div>
@@ -180,10 +236,11 @@ export function Home() {
                 placeholder="Или введите свою сумму"
                 value={depositAmount}
                 onChange={(e) => setDepositAmount(e.target.value)}
+                min="1"
               />
               <Button
                 className="w-full mt-2"
-                onClick={() => handleDeposit(Number(depositAmount))}
+                onClick={handleCustomDeposit}
                 disabled={!depositAmount || Number(depositAmount) <= 0}
               >
                 Пополнить

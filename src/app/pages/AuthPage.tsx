@@ -1,17 +1,22 @@
 import { motion } from 'motion/react';
 import { Lock, AlertCircle, RefreshCw, Monitor } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
 
-export function AuthPage() {
-  const { error, checkAuth, isTelegramReady, telegramUser } = useAuth();
+interface AuthPageProps {
+  error?: string | null;
+  isTelegramReady?: boolean;
+  telegramUser?: any;
+  onRetry?: () => void;
+}
 
-  const handleRetry = () => {
-    checkAuth();
-  };
-
+export function AuthPage({ 
+  error, 
+  isTelegramReady, 
+  telegramUser, 
+  onRetry 
+}: AuthPageProps) {
   const isLocalMode = () => {
-    const tgInitData = window.Telegram?.WebApp?.initData
-    return !tgInitData || tgInitData === ''
+    const tgInitData = window.Telegram?.WebApp?.initData;
+    return !tgInitData || tgInitData === '';
   };
 
   return (
@@ -24,13 +29,8 @@ export function AuthPage() {
       >
         {/* Logo */}
         <motion.div
-          animate={{
-            rotate: 720,
-          }}
-          transition={{
-            duration: 2,
-            ease: 'linear',
-          }}
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, ease: 'easeOut' }}
           className="inline-flex items-center justify-center w-32 h-32 bg-white/50 backdrop-blur-sm rounded-full mb-6 overflow-hidden shadow-lg"
         >
           <img
@@ -41,8 +41,8 @@ export function AuthPage() {
         </motion.div>
 
         {/* Title */}
-        <h1 className="text-3xl font-bold mb-2">Донаты для стримеров</h1>
-        <p className="text-gray-600 mb-8">Загрузка...</p>
+        <h1 className="text-3xl font-bold mb-2 text-gray-800">TipBot</h1>
+        <p className="text-gray-600 mb-8">Донаты для стримеров</p>
 
         {/* Status */}
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
@@ -51,23 +51,23 @@ export function AuthPage() {
             <>
               <div className="flex items-center justify-center gap-2 text-blue-600 mb-4">
                 <Monitor className="w-5 h-5" />
-                <span className="font-medium">Локальный режим (mock token)</span>
+                <span className="font-medium">Локальный режим</span>
               </div>
-              <p className="text-sm text-gray-500">
-                Используется токен для локальной разработки
+              <p className="text-sm text-gray-500 mb-3">
+                Используется mock токен для разработки
               </p>
               {error && (
-                <p className="text-sm text-red-600 bg-red-50 rounded-lg p-3 mt-3">
-                  {error}
-                </p>
+                <div className="bg-red-50 rounded-lg p-3 mb-3">
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
               )}
-              {error && (
+              {error && onRetry && (
                 <button
-                  onClick={handleRetry}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors mt-3"
+                  onClick={onRetry}
+                  className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   <RefreshCw className="w-4 h-4" />
-                  <span>Повторить</span>
+                  <span>Повторить попытку</span>
                 </button>
               )}
             </>
@@ -76,9 +76,9 @@ export function AuthPage() {
             <>
               <div className="flex items-center justify-center gap-2 text-green-600 mb-4">
                 <Lock className="w-5 h-5" />
-                <span className="font-medium">Telegram подключен</span>
+                <span className="font-medium">Авторизация через Telegram</span>
               </div>
-              <div className="flex items-center justify-center gap-3">
+              <div className="flex items-center justify-center gap-3 mb-4">
                 {telegramUser.photo_url && (
                   <img
                     src={telegramUser.photo_url}
@@ -88,13 +88,16 @@ export function AuthPage() {
                 )}
                 <div className="text-left">
                   <p className="font-semibold">
-                    {telegramUser.first_name} {telegramUser.last_name}
+                    {telegramUser.first_name} {telegramUser.last_name || ''}
                   </p>
                   {telegramUser.username && (
                     <p className="text-sm text-gray-500">@{telegramUser.username}</p>
                   )}
                 </div>
               </div>
+              <p className="text-sm text-gray-500">
+                Выполняется вход...
+              </p>
             </>
           ) : (
             // Mini App режим - ошибка или ожидание
@@ -106,7 +109,7 @@ export function AuthPage() {
                     <span className="font-medium">Ожидание Telegram...</span>
                   </div>
                   <p className="text-sm text-gray-500">
-                    Откройте это приложение в Telegram для авторизации
+                    Откройте приложение в Telegram
                   </p>
                 </>
               ) : (
@@ -116,29 +119,31 @@ export function AuthPage() {
                     <span className="font-medium">Ошибка авторизации</span>
                   </div>
                   {error && (
-                    <p className="text-sm text-red-600 bg-red-50 rounded-lg p-3">
-                      {error}
-                    </p>
+                    <div className="w-full bg-red-50 rounded-lg p-3">
+                      <p className="text-sm text-red-600">{error}</p>
+                    </div>
                   )}
-                  <button
-                    onClick={handleRetry}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    <span>Повторить</span>
-                  </button>
+                  {onRetry && (
+                    <button
+                      onClick={onRetry}
+                      className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      <span>Повторить попытку</span>
+                    </button>
+                  )}
                 </>
               )}
             </div>
           )}
         </div>
 
-        {/* Info */}
+        {/* Footer Info */}
         <div className="text-sm text-gray-500">
           <p>
             {isLocalMode()
-              ? 'Локальная разработка с mock токеном'
-              : 'Автоматическая авторизация через Telegram'}
+              ? '🛠️ Режим разработки'
+              : '🔐 Безопасная авторизация через Telegram'}
           </p>
         </div>
       </motion.div>

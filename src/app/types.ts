@@ -93,7 +93,7 @@ export interface AlertSettings {
   bg_color: string;
   text_color: string;
   font: string;
-  duration_sec: number;
+  duration_sec: number;  
   image_enabled: boolean;
   tts_enabled: boolean;
   tts_voice: string;
@@ -240,4 +240,14 @@ export interface Transaction {
   userId?: string;
   createdAt?: Date;
   paymentMethod?: string;
+}
+
+export type Streamer = StreamerProfile
+export type Donation = DonationHistoryItem
+export type StreamerSession = {
+  id: number
+  streamerId: number
+  startTime: Date
+  endTime?: Date
+  totalEarned: number
 }

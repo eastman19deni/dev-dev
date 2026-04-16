@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Info } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Info, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Switch } from './ui/switch';
 import { Input } from './ui/input';
@@ -7,19 +7,68 @@ import { Label } from './ui/label';
 import { Button } from './ui/button';
 import { Alert, AlertDescription } from './ui/alert';
 import { toast } from 'sonner';
+import { passiveIncomeApi } from '../../services/api';
+import type { PassiveIncomeSettings } from '../types';
 
 export function PassiveIncome() {
-  const [enabled, setEnabled] = useState(true);
-  const [amount, setAmount] = useState('10');
-  const [interval, setInterval] = useState('5');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [settings, setSettings] = useState<PassiveIncomeSettings>({
+    enabled: false,
+    coins_per_interval: 10,
+    interval_minutes: 5,
+  });
 
-  const handleSave = () => {
-    toast.success('Настройки пассивного дохода сохранены!');
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      setIsLoading(true);
+      const data = await passiveIncomeApi.getSettings();
+      setSettings(data);
+    } catch (error) {
+      console.error('Failed to load passive income settings:', error);
+      toast.error('Не удалось загрузить настройки');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const estimatedPerHour = enabled 
-    ? Math.floor((60 / Number(interval)) * Number(amount)) 
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const updatedSettings = await passiveIncomeApi.updateSettings({
+        enabled: settings.enabled,
+        coins_per_interval: settings.coins_per_interval,
+        interval_minutes: settings.interval_minutes,
+      });
+      setSettings(updatedSettings);
+      toast.success('Настройки пассивного дохода сохранены!');
+    } catch (error: any) {
+      console.error('Failed to save settings:', error);
+      toast.error(error?.message || 'Ошибка при сохранении настроек');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const estimatedPerHour = settings.enabled 
+    ? Math.floor((60 / settings.interval_minutes) * settings.coins_per_interval) 
     : 0;
+
+  if (isLoading) {
+    return (
+      <Card className="shadow-lg">
+        <CardContent className="py-12">
+          <div className="flex items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="shadow-lg">
@@ -42,13 +91,14 @@ export function PassiveIncome() {
           </div>
           <Switch
             id="passive-toggle"
-            checked={enabled}
-            onCheckedChange={setEnabled}
+            checked={settings.enabled}
+            onCheckedChange={(checked) => setSettings({ ...settings, enabled: checked })}
+            disabled={isSaving}
           />
         </div>
 
         {/* Settings */}
-        {enabled && (
+        {settings.enabled && (
           <div className="space-y-4 animate-in fade-in duration-300">
             {/* Amount */}
             <div className="space-y-2">
@@ -58,9 +108,13 @@ export function PassiveIncome() {
                 type="number"
                 min="1"
                 max="100"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                value={settings.coins_per_interval}
+                onChange={(e) => setSettings({ 
+                  ...settings, 
+                  coins_per_interval: Number(e.target.value) 
+                })}
                 className="text-lg"
+                disabled={isSaving}
               />
               <p className="text-xs text-gray-500">
                 От 1 до 100 монет за начисление
@@ -75,9 +129,13 @@ export function PassiveIncome() {
                 type="number"
                 min="1"
                 max="60"
-                value={interval}
-                onChange={(e) => setInterval(e.target.value)}
+                value={settings.interval_minutes}
+                onChange={(e) => setSettings({ 
+                  ...settings, 
+                  interval_minutes: Number(e.target.value) 
+                })}
                 className="text-lg"
+                disabled={isSaving}
               />
               <p className="text-xs text-gray-500">
                 От 1 до 60 минут между начислениями
@@ -88,8 +146,8 @@ export function PassiveIncome() {
             <Alert className="bg-blue-50 border-blue-200">
               <Info className="h-4 w-4 text-blue-600" />
               <AlertDescription className="text-blue-900">
-                Зрители будут получать <span className="font-bold">{amount} монет</span> каждые{' '}
-                <span className="font-bold">{interval} минут</span>, пока вы в эфире
+                Зрители будут получать <span className="font-bold">{settings.coins_per_interval} монет</span> каждые{' '}
+                <span className="font-bold">{settings.interval_minutes} минут</span>, пока вы в эфире
               </AlertDescription>
             </Alert>
 
@@ -105,7 +163,7 @@ export function PassiveIncome() {
         )}
 
         {/* Disabled State */}
-        {!enabled && (
+        {!settings.enabled && (
           <div className="text-center py-8 text-gray-500">
             <p>Пассивный доход отключен</p>
             <p className="text-sm mt-1">
@@ -118,9 +176,16 @@ export function PassiveIncome() {
         <Button 
           onClick={handleSave} 
           className="w-full"
-          disabled={!enabled}
+          disabled={isSaving}
         >
-          Сохранить настройки
+          {isSaving ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Сохранение...
+            </>
+          ) : (
+            'Сохранить настройки'
+          )}
         </Button>
 
         {/* Additional Info */}

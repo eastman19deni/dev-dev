@@ -1,71 +1,86 @@
-import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
+import { Button } from './ui/button';
+import { ArrowRight, Gift, Zap, Shield } from 'lucide-react';
 
 interface WelcomeScreenProps {
   onComplete: () => void;
 }
 
 export function WelcomeScreen({ onComplete }: WelcomeScreenProps) {
-  const [show, setShow] = useState(true);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShow(false);
-      setTimeout(onComplete, 500);
-    }, 2000);
-
-    return () => clearTimeout(timer);
-  }, [onComplete]);
-
-  if (!show) return null;
-
   return (
-    <motion.div
-      initial={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600"
-    >
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 flex items-center justify-center p-6">
       <motion.div
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="text-center text-white"
+        className="max-w-md w-full"
       >
-        <motion.div
-          animate={{
-            rotate: 720,
-          }}
-          transition={{
-            duration: 2,
-            ease: 'linear',
-          }}
-          className="inline-flex items-center justify-center w-32 h-32 bg-white/20 backdrop-blur-sm rounded-full mb-6 overflow-hidden"
-        >
-          <img
-            src="/snack.webp"
-            alt="Логотип"
-            className="w-32 h-32 rounded-full object-cover object-[50%_100%]"
-          />
-        </motion.div>
-        
-        <motion.h1
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="text-4xl font-bold mb-2"
-        >
-          Донаты
-        </motion.h1>
-        
-        <motion.p
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="text-xl text-white/80"
-        >
-          для стримеров
-        </motion.p>
+        <div className="bg-white rounded-3xl shadow-2xl p-8 text-center">
+          {/* Logo */}
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: 'spring' }}
+            className="w-24 h-24 mx-auto mb-6"
+          >
+            <img
+              src="/snack.webp"
+              alt="TipBot"
+              className="w-full h-full rounded-full object-cover"
+            />
+          </motion.div>
+
+          <h1 className="text-3xl font-bold mb-2 text-gray-800">
+            Добро пожаловать в TipBot!
+          </h1>
+          <p className="text-gray-600 mb-8">
+            Поддерживай любимых стримеров и получай награды
+          </p>
+
+          {/* Features */}
+          <div className="space-y-4 mb-8 text-left">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <Gift className="w-4 h-4 text-blue-600" />
+              </div>
+              <div>
+                <p className="font-medium text-gray-800">Отправляй донаты</p>
+                <p className="text-sm text-gray-500">Поддерживай стримеров во время эфира</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <Zap className="w-4 h-4 text-purple-600" />
+              </div>
+              <div>
+                <p className="font-medium text-gray-800">Пассивный доход</p>
+                <p className="text-sm text-gray-500">Получай монеты просто за просмотр</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <Shield className="w-4 h-4 text-green-600" />
+              </div>
+              <div>
+                <p className="font-medium text-gray-800">Безопасность</p>
+                <p className="text-sm text-gray-500">Авторизация через Telegram</p>
+              </div>
+            </div>
+          </div>
+
+          <Button
+            onClick={onComplete}
+            className="w-full h-12 text-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+          >
+            Начать
+            <ArrowRight className="w-5 h-5 ml-2" />
+          </Button>
+
+          <p className="text-xs text-gray-400 mt-4">
+            Нажимая "Начать", вы принимаете условия использования
+          </p>
+        </div>
       </motion.div>
-    </motion.div>
+    </div>
   );
 }

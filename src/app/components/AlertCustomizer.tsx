@@ -1,31 +1,92 @@
-import React, { useState } from 'react';
-import { Play } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Play, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Button } from './ui/button';
 import { Label } from './ui/label';
 import { Slider } from './ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { mockUser } from '../mock-data';
 import { toast } from 'sonner';
+import { alertApi } from '../../services/api';
+import { userApi } from '../../services/api';
+import type { AlertSettings, User } from '../types';
 
 const FONTS = ['Arial', 'Comic Sans MS', 'Courier New', 'Impact', 'Times New Roman', 'Verdana'];
+const TTS_VOICES = ['default', 'male', 'female', 'robot'];
 
 export function AlertCustomizer() {
-  const [backgroundColor, setBackgroundColor] = useState('#6366f1');
-  const [textColor, setTextColor] = useState('#ffffff');
-  const [font, setFont] = useState('Arial');
-  const [duration, setDuration] = useState([5]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [settings, setSettings] = useState<AlertSettings>({
+    bg_color: '#6366f1',
+    text_color: '#ffffff',
+    font: 'Arial',
+    duration_sec: 5,
+    image_enabled: false,
+    tts_enabled: false,
+    tts_voice: 'default',
+  });
   const [showPreview, setShowPreview] = useState(false);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      const [userData, alertSettings] = await Promise.all([
+        userApi.getMe(),
+        alertApi.getSettings().catch(() => null),
+      ]);
+      
+      setUser(userData);
+      if (alertSettings) {
+        setSettings(alertSettings);
+      }
+    } catch (error) {
+      console.error('Failed to load settings:', error);
+      toast.error('Не удалось загрузить настройки');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleTestAlert = () => {
     setShowPreview(true);
     toast.info('Тестовый алерт запущен');
-    setTimeout(() => setShowPreview(false), duration[0] * 1000);
+    setTimeout(() => setShowPreview(false), settings.duration_sec * 1000);
   };
 
-  const handleSave = () => {
-    toast.success('Настройки алертов сохранены!');
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const updatedSettings = await alertApi.updateSettings({
+        bg_color: settings.bg_color,
+        text_color: settings.text_color,
+        font: settings.font,
+        duration_sec: settings.duration_sec,
+        image_enabled: settings.image_enabled,
+        tts_enabled: settings.tts_enabled,
+        tts_voice: settings.tts_voice,
+      });
+      setSettings(updatedSettings);
+      toast.success('Настройки алертов сохранены!');
+    } catch (error: any) {
+      console.error('Failed to save settings:', error);
+      toast.error(error?.message || 'Ошибка при сохранении настроек');
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -44,14 +105,14 @@ export function AlertCustomizer() {
             <div className="flex gap-3">
               <input
                 type="color"
-                value={backgroundColor}
-                onChange={(e) => setBackgroundColor(e.target.value)}
+                value={settings.bg_color}
+                onChange={(e) => setSettings({ ...settings, bg_color: e.target.value })}
                 className="w-14 h-14 rounded-lg cursor-pointer border-2 border-gray-200"
               />
               <input
                 type="text"
-                value={backgroundColor}
-                onChange={(e) => setBackgroundColor(e.target.value)}
+                value={settings.bg_color}
+                onChange={(e) => setSettings({ ...settings, bg_color: e.target.value })}
                 className="flex-1 px-4 py-2 border rounded-lg"
                 placeholder="#000000"
               />
@@ -64,14 +125,14 @@ export function AlertCustomizer() {
             <div className="flex gap-3">
               <input
                 type="color"
-                value={textColor}
-                onChange={(e) => setTextColor(e.target.value)}
+                value={settings.text_color}
+                onChange={(e) => setSettings({ ...settings, text_color: e.target.value })}
                 className="w-14 h-14 rounded-lg cursor-pointer border-2 border-gray-200"
               />
               <input
                 type="text"
-                value={textColor}
-                onChange={(e) => setTextColor(e.target.value)}
+                value={settings.text_color}
+                onChange={(e) => setSettings({ ...settings, text_color: e.target.value })}
                 className="flex-1 px-4 py-2 border rounded-lg"
                 placeholder="#ffffff"
               />
@@ -81,7 +142,10 @@ export function AlertCustomizer() {
           {/* Font */}
           <div className="space-y-2">
             <Label>Шрифт</Label>
-            <Select value={font} onValueChange={setFont}>
+            <Select 
+              value={settings.font} 
+              onValueChange={(value) => setSettings({ ...settings, font: value })}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -99,11 +163,11 @@ export function AlertCustomizer() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>Длительность показа</Label>
-              <span className="text-sm font-medium">{duration[0]} сек</span>
+              <span className="text-sm font-medium">{settings.duration_sec} сек</span>
             </div>
             <Slider
-              value={duration}
-              onValueChange={setDuration}
+              value={[settings.duration_sec]}
+              onValueChange={([value]) => setSettings({ ...settings, duration_sec: value })}
               min={3}
               max={10}
               step={1}
@@ -117,12 +181,24 @@ export function AlertCustomizer() {
               variant="outline"
               onClick={handleTestAlert}
               className="flex-1 gap-2"
+              disabled={isSaving}
             >
               <Play className="w-4 h-4" />
               Тест
             </Button>
-            <Button onClick={handleSave} className="flex-1">
-              Сохранить настройки
+            <Button 
+              onClick={handleSave} 
+              className="flex-1"
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Сохранение...
+                </>
+              ) : (
+                'Сохранить настройки'
+              )}
             </Button>
           </div>
         </CardContent>
@@ -151,9 +227,9 @@ export function AlertCustomizer() {
                 showPreview ? 'scale-100 opacity-100' : 'scale-50 opacity-0'
               }`}
               style={{
-                backgroundColor,
-                color: textColor,
-                fontFamily: font,
+                backgroundColor: settings.bg_color,
+                color: settings.text_color,
+                fontFamily: settings.font,
                 padding: '2rem',
                 borderRadius: '1rem',
                 minWidth: '300px',
@@ -161,8 +237,10 @@ export function AlertCustomizer() {
                 boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
               }}
             >
-              <p className="text-2xl font-bold mb-2">{mockUser.username}</p>
-              <p className="text-5xl font-bold mb-2">500 ₽</p>
+              <p className="text-2xl font-bold mb-2">
+                {user?.display_name || user?.username || 'Зритель'}
+              </p>
+              <p className="text-5xl font-bold mb-2">500 coins</p>
               <p className="text-xl">Спасибо за стрим!</p>
             </div>
 
@@ -172,7 +250,7 @@ export function AlertCustomizer() {
                 <div>
                   <p className="text-lg mb-2">Нажмите "Тест" чтобы увидеть алерт</p>
                   <p className="text-sm text-gray-400">
-                    Алерт будет отображаться {duration[0]} секунд
+                    Алерт будет отображаться {settings.duration_sec} секунд
                   </p>
                 </div>
               </div>

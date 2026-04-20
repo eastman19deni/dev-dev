@@ -251,3 +251,11 @@ export type StreamerSession = {
   endTime?: Date
   totalEarned: number
 }
+
+export interface StreamStatusResponse {
+  is_live: boolean;
+  session_id: number | null;
+  started_at: string | null;
+  widget_url: string | null;
+  ws_url: string | null;  
+}

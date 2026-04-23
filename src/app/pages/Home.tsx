@@ -24,25 +24,47 @@ export function Home() {
     loadData();
   }, []);
 
-  const loadData = async () => {
+ const loadData = async () => {
+  try {
+    setIsLoading(true);
+    
+    // Загружаем пользователя
+    let userData = null;
     try {
-      setIsLoading(true);
-      const [userData, streamersData, balanceData] = await Promise.all([
-        userApi.getMe(),
-        streamerApi.getAll({ limit: 50 }),
-        balanceApi.get(),
-      ]);
-      
-      setUser(userData);
-      setStreamers(streamersData.items);
-      setBalance(balanceData.balance);
-    } catch (error) {
-      console.error('Failed to load data:', error);
-      toast.error('Не удалось загрузить данные');
-    } finally {
-      setIsLoading(false);
+      userData = await userApi.getMe();
+    } catch (err) {
+      console.error('Failed to load user:', err);
+      toast.error('Не удалось загрузить профиль');
     }
-  };
+    
+    // Загружаем стримеров
+    let streamersData = null;
+    try {
+      streamersData = await streamerApi.getAll({ limit: 50 });
+    } catch (err) {
+      console.error('Failed to load streamers:', err);
+      toast.error('Не удалось загрузить список стримеров');
+    }
+    
+    // Загружаем баланс
+    let balanceData = null;
+    try {
+      balanceData = await balanceApi.get();
+    } catch (err) {
+      console.error('Failed to load balance:', err);
+      toast.error('Не удалось загрузить баланс');
+    }
+    
+    if (userData) setUser(userData);
+    if (streamersData) setStreamers(streamersData.items);
+    if (balanceData) setBalance(balanceData.balance);
+    
+  } catch (error) {
+    console.error('Failed to load data:', error);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const filteredStreamers = streamers.filter(streamer =>
     (streamer.display_name || streamer.username || '').toLowerCase().includes(searchQuery.toLowerCase())

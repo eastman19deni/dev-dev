@@ -43,7 +43,7 @@ export function Home() {
       streamersData = await streamerApi.getAll({ limit: 50 });
     } catch (err) {
       console.error('Failed to load streamers:', err);
-      toast.error('Не удалось загрузить список стримеров');
+      toast.error('Не удалось загрузить список стримеровв');
     }
     
     // Загружаем баланс

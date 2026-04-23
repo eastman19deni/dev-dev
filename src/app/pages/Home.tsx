@@ -34,7 +34,7 @@ export function Home() {
       userData = await userApi.getMe();
     } catch (err) {
       console.error('Failed to load user:', err);
-      toast.error('Не удалось загрузить профильь');
+      toast.error('Не удалось загрузить профиль');
     }
     
     // Загружаем стримеров
